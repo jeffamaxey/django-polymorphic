@@ -61,19 +61,21 @@ def run_vanilla_any_poly(func, iterations=1):
 def bench_create(model):
     for i in range(num_objects):
         model.objects.create(
-            field1="abc" + str(i), field2="abcd" + str(i), field3="abcde" + str(i)
+            field1=f"abc{str(i)}",
+            field2=f"abcd{str(i)}",
+            field3=f"abcde{str(i)}",
         )
     # print 'count:',model.objects.count()
 
 
 def bench_load1(model):
-    for o in model.objects.all():
+    for _ in model.objects.all():
         pass
 
 
 def bench_load1_short(model):
-    for i in range(num_objects / 100):
-        for o in model.objects.all()[:100]:
+    for _ in range(num_objects / 100):
+        for _ in model.objects.all()[:100]:
             pass
 
 
@@ -85,7 +87,7 @@ def bench_load2(model):
 
 
 def bench_load2_short(model):
-    for i in range(num_objects / 100):
+    for _ in range(num_objects / 100):
         for o in model.objects.all()[:100]:
             f1 = o.field1
             f2 = o.field2

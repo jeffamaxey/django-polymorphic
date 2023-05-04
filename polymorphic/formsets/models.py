@@ -77,8 +77,7 @@ class PolymorphicFormSetChild:
         # we allow to define things like 'extra_...' fields that are amended to the current child settings.
 
         exclude = list(self.exclude)
-        extra_exclude = kwargs.pop("extra_exclude", None)
-        if extra_exclude:
+        if extra_exclude := kwargs.pop("extra_exclude", None):
             exclude += list(extra_exclude)
 
         defaults = {
@@ -93,9 +92,7 @@ class PolymorphicFormSetChild:
             "error_messages": self.error_messages,
             "widgets": self.widgets,
             # 'field_classes': field_classes,
-        }
-        defaults.update(kwargs)
-
+        } | kwargs
         return modelform_factory(self.model, **defaults)
 
 
@@ -173,7 +170,7 @@ class BasePolymorphicModelFormSet(BaseModelFormSet):
         if i >= self.initial_form_count() and i >= self.min_num:
             defaults["empty_permitted"] = True
             defaults["use_required_attribute"] = False
-        defaults.update(kwargs)
+        defaults |= kwargs
 
         # Need to find the model that will be displayed in this form.
         # Hence, peeking in the self.queryset_data beforehand.
@@ -189,7 +186,7 @@ class BasePolymorphicModelFormSet(BaseModelFormSet):
                     ct_id = int(self.data[f"{prefix}-polymorphic_ctype"])
                 except (KeyError, ValueError):
                     raise ValidationError(
-                        "Formset row {} has no 'polymorphic_ctype' defined!".format(prefix)
+                        f"Formset row {prefix} has no 'polymorphic_ctype' defined!"
                     )
 
                 model = ContentType.objects.get_for_id(ct_id).model_class()
@@ -198,19 +195,18 @@ class BasePolymorphicModelFormSet(BaseModelFormSet):
                     raise UnsupportedChildType(
                         f"Child model type {model} is not part of the formset"
                     )
+        elif "instance" in defaults:
+            model = defaults["instance"].get_real_instance_class()  # allow proxy models
+        elif "polymorphic_ctype" in defaults.get("initial", {}):
+            model = defaults["initial"]["polymorphic_ctype"].model_class()
+        elif i < len(self.queryset_data):
+            model = self.queryset_data[i].__class__
         else:
-            if "instance" in defaults:
-                model = defaults["instance"].get_real_instance_class()  # allow proxy models
-            elif "polymorphic_ctype" in defaults.get("initial", {}):
-                model = defaults["initial"]["polymorphic_ctype"].model_class()
-            elif i < len(self.queryset_data):
-                model = self.queryset_data[i].__class__
-            else:
-                # Extra forms, cycle between all types
-                # TODO: take the 'extra' value of each child formset into account.
-                total_known = len(self.queryset_data)
-                child_models = list(self.child_forms.keys())
-                model = child_models[(i - total_known) % len(child_models)]
+            # Extra forms, cycle between all types
+            # TODO: take the 'extra' value of each child formset into account.
+            total_known = len(self.queryset_data)
+            child_models = list(self.child_forms.keys())
+            model = child_models[(i - total_known) % len(child_models)]
 
         form_class = self.get_form_class(model)
         form = form_class(**defaults)
@@ -244,10 +240,7 @@ class BasePolymorphicModelFormSet(BaseModelFormSet):
         except KeyError:
             # This may happen when the query returns objects of a type that was not handled by the formset.
             raise UnsupportedChildType(
-                "The '{}' found a '{}' model in the queryset, "
-                "but no form class is registered to display it.".format(
-                    self.__class__.__name__, model.__name__
-                )
+                f"The '{self.__class__.__name__}' found a '{model.__name__}' model in the queryset, but no form class is registered to display it."
             )
 
     def is_multipart(self):
@@ -358,7 +351,7 @@ def polymorphic_modelformset_factory(
         # 'exclude': exclude,
     }
     if child_form_kwargs:
-        child_kwargs.update(child_form_kwargs)
+        child_kwargs |= child_form_kwargs
 
     FormSet.child_forms = polymorphic_child_forms_factory(formset_children, **child_kwargs)
     return FormSet
@@ -441,7 +434,7 @@ def polymorphic_inlineformset_factory(
         # 'exclude': exclude,
     }
     if child_form_kwargs:
-        child_kwargs.update(child_form_kwargs)
+        child_kwargs |= child_form_kwargs
 
     FormSet.child_forms = polymorphic_child_forms_factory(formset_children, **child_kwargs)
     return FormSet

@@ -52,8 +52,7 @@ class PolymorphicModelIterable(ModelIterable):
 
             # Make sure the base iterator is read in chunks instead of
             # reading it completely, in case our caller read only a few objects.
-            for i in range(Polymorphic_QuerySet_objects_per_request):
-
+            for _ in range(Polymorphic_QuerySet_objects_per_request):
                 try:
                     o = next(base_iter)
                     base_result_objects.append(o)
@@ -61,11 +60,7 @@ class PolymorphicModelIterable(ModelIterable):
                     reached_end = True
                     break
 
-            real_results = self.queryset._get_real_instances(base_result_objects)
-
-            for o in real_results:
-                yield o
-
+            yield from self.queryset._get_real_instances(base_result_objects)
             if reached_end:
                 return
 
@@ -122,10 +117,10 @@ class PolymorphicQuerySet(QuerySet):
         )
         return new
 
-    def as_manager(cls):
+    def as_manager(self):
         from .managers import PolymorphicManager
 
-        manager = PolymorphicManager.from_queryset(cls)()
+        manager = PolymorphicManager.from_queryset(self)()
         manager._built_with_as_manager = True
         return manager
 
@@ -417,9 +412,9 @@ class PolymorphicQuerySet(QuerySet):
         # TODO: defer(), only(): support for these would be around here
         for real_concrete_class, idlist in idlist_per_model.items():
             indices = indexlist_per_model[real_concrete_class]
-            real_objects = real_concrete_class._base_objects.db_manager(self.db).filter(
-                **{("%s__in" % pk_name): idlist}
-            )
+            real_objects = real_concrete_class._base_objects.db_manager(
+                self.db
+            ).filter(**{f"{pk_name}__in": idlist})
             # copy select related configuration to new qs
             real_objects.query.select_related = self.query.select_related
 
@@ -432,22 +427,21 @@ class PolymorphicQuerySet(QuerySet):
                         real_concrete_class, field
                     )
                 except AssertionError:
-                    if "___" in field:
-                        # The originally passed argument to .defer() or .only()
-                        # was in the form Model2B___field2, where Model2B is
-                        # now a superclass of real_concrete_class. Thus it's
-                        # sufficient to just use the field name.
-                        translated_field_name = field.rpartition("___")[-1]
-
-                        # Check if the field does exist.
-                        # Ignore deferred fields that don't exist in this subclass type.
-                        try:
-                            real_concrete_class._meta.get_field(translated_field_name)
-                        except FieldDoesNotExist:
-                            continue
-                    else:
+                    if "___" not in field:
                         raise
 
+                    # The originally passed argument to .defer() or .only()
+                    # was in the form Model2B___field2, where Model2B is
+                    # now a superclass of real_concrete_class. Thus it's
+                    # sufficient to just use the field name.
+                    translated_field_name = field.rpartition("___")[-1]
+
+                    # Check if the field does exist.
+                    # Ignore deferred fields that don't exist in this subclass type.
+                    try:
+                        real_concrete_class._meta.get_field(translated_field_name)
+                    except FieldDoesNotExist:
+                        continue
                 deferred_loading_fields.append(translated_field_name)
             real_objects.query.deferred_loading = (
                 set(deferred_loading_fields),
@@ -504,11 +498,10 @@ class PolymorphicQuerySet(QuerySet):
         return resultlist
 
     def __repr__(self, *args, **kwargs):
-        if self.model.polymorphic_query_multiline_output:
-            result = [repr(o) for o in self.all()]
-            return "[ " + ",\n  ".join(result) + " ]"
-        else:
+        if not self.model.polymorphic_query_multiline_output:
             return super().__repr__(*args, **kwargs)
+        result = [repr(o) for o in self.all()]
+        return "[ " + ",\n  ".join(result) + " ]"
 
     class _p_list_class(list):
         def __repr__(self, *args, **kwargs):
@@ -531,7 +524,8 @@ class PolymorphicQuerySet(QuerySet):
         if base_result_objects is None:
             base_result_objects = self
         olist = self._get_real_instances(base_result_objects)
-        if not self.model.polymorphic_query_multiline_output:
-            return olist
-        clist = PolymorphicQuerySet._p_list_class(olist)
-        return clist
+        return (
+            PolymorphicQuerySet._p_list_class(olist)
+            if self.model.polymorphic_query_multiline_output
+            else olist
+        )

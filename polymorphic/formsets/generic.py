@@ -28,8 +28,7 @@ class GenericPolymorphicFormSetChild(PolymorphicFormSetChild):
         Construct the form class for the formset child.
         """
         exclude = list(self.exclude)
-        extra_exclude = kwargs.pop("extra_exclude", None)
-        if extra_exclude:
+        if extra_exclude := kwargs.pop("extra_exclude", None):
             exclude += list(extra_exclude)
 
         # Make sure the GFK fields are excluded by default
@@ -42,7 +41,7 @@ class GenericPolymorphicFormSetChild(PolymorphicFormSetChild):
             not isinstance(ct_field, models.ForeignKey)
             or ct_field.remote_field.model != ContentType
         ):
-            raise Exception("fk_name '%s' is not a ForeignKey to ContentType" % ct_field)
+            raise Exception(f"fk_name '{ct_field}' is not a ForeignKey to ContentType")
 
         fk_field = opts.get_field(self.fk_field)  # let the exception propagate
         exclude.extend([ct_field.name, fk_field.name])
@@ -123,7 +122,7 @@ def generic_polymorphic_inlineformset_factory(
         "fk_field": fk_field,
     }
     if child_form_kwargs:
-        child_kwargs.update(child_form_kwargs)
+        child_kwargs |= child_form_kwargs
 
     FormSet = generic_inlineformset_factory(**kwargs)
     FormSet.child_forms = polymorphic_child_forms_factory(formset_children, **child_kwargs)

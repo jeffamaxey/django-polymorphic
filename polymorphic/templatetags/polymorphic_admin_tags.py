@@ -11,15 +11,14 @@ class BreadcrumbScope(Node):
     @classmethod
     def parse(cls, parser, token):
         bits = token.split_contents()
-        if len(bits) == 2:
-            (tagname, base_opts) = bits
-            base_opts = parser.compile_filter(base_opts)
-            nodelist = parser.parse(("endbreadcrumb_scope",))
-            parser.delete_first_token()
-
-            return cls(base_opts=base_opts, nodelist=nodelist)
-        else:
+        if len(bits) != 2:
             raise TemplateSyntaxError(f"{token.contents[0]} tag expects 1 argument")
+        (tagname, base_opts) = bits
+        base_opts = parser.compile_filter(base_opts)
+        nodelist = parser.parse(("endbreadcrumb_scope",))
+        parser.delete_first_token()
+
+        return cls(base_opts=base_opts, nodelist=nodelist)
 
     def render(self, context):
         # app_label is really hard to overwrite in the standard Django ModelAdmin.

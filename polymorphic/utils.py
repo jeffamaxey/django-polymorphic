@@ -66,11 +66,15 @@ def get_base_polymorphic_model(ChildModel, allow_abstract=False):
     """
     First the first concrete model in the inheritance chain that inherited from the PolymorphicModel.
     """
-    for Model in reversed(ChildModel.mro()):
-        if (
-            isinstance(Model, PolymorphicModelBase)
-            and Model is not PolymorphicModel
-            and (allow_abstract or not Model._meta.abstract)
-        ):
-            return Model
-    return None
+    return next(
+        (
+            Model
+            for Model in reversed(ChildModel.mro())
+            if (
+                isinstance(Model, PolymorphicModelBase)
+                and Model is not PolymorphicModel
+                and (allow_abstract or not Model._meta.abstract)
+            )
+        ),
+        None,
+    )

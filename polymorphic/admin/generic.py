@@ -52,10 +52,7 @@ class GenericPolymorphicInlineModelAdmin(PolymorphicInlineModelAdmin, GenericInl
             return ContentType.objects.get_for_model(self.model, for_concrete_model=False)
 
         def get_formset_child(self, request, obj=None, **kwargs):
-            # Similar to GenericInlineModelAdmin.get_formset(),
-            # make sure the GFK is automatically excluded from the form
-            defaults = {"ct_field": self.ct_field, "fk_field": self.ct_fk_field}
-            defaults.update(kwargs)
+            defaults = {"ct_field": self.ct_field, "fk_field": self.ct_fk_field} | kwargs
             return super(GenericPolymorphicInlineModelAdmin.Child, self).get_formset_child(
                 request, obj=obj, **defaults
             )

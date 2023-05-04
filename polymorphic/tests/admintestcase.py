@@ -53,7 +53,7 @@ class AdminTestCase(TestCase):
 
         # Make sure the URLs are reachable by reverse()
         clear_url_caches()
-        set_urlconf(tuple([path("tmp-admin/", self.admin_site.urls)]))
+        set_urlconf((path("tmp-admin/", self.admin_site.urls), ))
 
     def get_admin_instance(self, model):
         try:
@@ -222,7 +222,7 @@ class AdminTestCase(TestCase):
             self.assertEqual(
                 response.status_code,
                 302,
-                "Form errors in calling {}:\n{}".format(request_url, errors.as_text()),
+                f"Form errors in calling {request_url}:\n{errors.as_text()}",
             )
         self.assertTrue(
             "/login/?next=" not in response["Location"],

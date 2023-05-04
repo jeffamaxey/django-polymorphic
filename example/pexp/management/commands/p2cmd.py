@@ -47,26 +47,6 @@ class Command(BaseCommand):
     help = ""
 
     def handle_noargs(self, **options):
-        if False:
-            TestModelA.objects.all().delete()
-            a = TestModelA.objects.create(field1="A1")
-            b = TestModelB.objects.create(field1="B1", field2="B2")
-            c = TestModelC.objects.create(field1="C1", field2="C2", field3="C3")
-            connection.queries_log.clear()
-            print(TestModelC.base_objects.all())
-            show_queries()
-
-        if False:
-            TestModelA.objects.all().delete()
-            for i in range(1000):
-                a = TestModelA.objects.create(field1=str(i % 100))
-                b = TestModelB.objects.create(field1=str(i % 100), field2=str(i % 200))
-                c = TestModelC.objects.create(
-                    field1=str(i % 100), field2=str(i % 200), field3=str(i % 300)
-                )
-                if i % 100 == 0:
-                    print(i)
-
         f = print_timing(poly_sql_query, iterations=1000)
         f()
 
@@ -74,14 +54,6 @@ class Command(BaseCommand):
         f()
 
         return
-
-        NormalModelA.objects.all().delete()
-        a = NormalModelA.objects.create(field1="A1")
-        b = NormalModelB.objects.create(field1="B1", field2="B2")
-        c = NormalModelC.objects.create(field1="C1", field2="C2", field3="C3")
-        qs = TestModelA.objects.raw("SELECT * from pexp_testmodela")
-        for o in list(qs):
-            print(o)
 
 
 def poly_sql_query():

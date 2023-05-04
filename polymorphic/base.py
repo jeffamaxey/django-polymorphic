@@ -54,12 +54,12 @@ class PolymorphicModelBase(ModelBase):
     PolymorphicQuerySet.
     """
 
-    def __new__(self, model_name, bases, attrs, **kwargs):
+    def __new__(cls, model_name, bases, attrs, **kwargs):
         # print; print '###', model_name, '- bases:', bases
 
         # Workaround compatibility issue with six.with_metaclass() and custom Django model metaclasses:
         if not attrs and model_name == "NewBase":
-            return super().__new__(self, model_name, bases, attrs, **kwargs)
+            return super().__new__(cls, model_name, bases, attrs, **kwargs)
 
         # Make sure that manager_inheritance_from_future is set, since django-polymorphic 1.x already
         # simulated that behavior on the polymorphic manager to all subclasses behave like polymorphics
@@ -71,14 +71,14 @@ class PolymorphicModelBase(ModelBase):
                 attrs["Meta"] = type("Meta", (object,), {"manager_inheritance_from_future": True})
 
         # create new model
-        new_class = self.call_superclass_new_method(model_name, bases, attrs, **kwargs)
+        new_class = cls.call_superclass_new_method(model_name, bases, attrs, **kwargs)
 
         # check if the model fields are all allowed
-        self.validate_model_fields(new_class)
+        cls.validate_model_fields(new_class)
 
         # validate resulting default manager
         if not new_class._meta.abstract and not new_class._meta.swapped:
-            self.validate_model_manager(new_class.objects, model_name, "objects")
+            cls.validate_model_manager(new_class.objects, model_name, "objects")
 
         # for __init__ function of this class (monkeypatching inheritance accessors)
         new_class.polymorphic_super_sub_accessors_replaced = False
@@ -93,7 +93,7 @@ class PolymorphicModelBase(ModelBase):
         return new_class
 
     @classmethod
-    def call_superclass_new_method(self, model_name, bases, attrs, **kwargs):
+    def call_superclass_new_method(cls, model_name, bases, attrs, **kwargs):
         """call __new__ method of super class and return the newly created class.
         Also work around a limitation in Django's ModelBase."""
         # There seems to be a general limitation in Django's app_label handling
@@ -111,13 +111,13 @@ class PolymorphicModelBase(ModelBase):
 
         if do_app_label_workaround:
             meta.app_label = "poly_dummy_app_label"
-        new_class = super().__new__(self, model_name, bases, attrs, **kwargs)
+        new_class = super().__new__(cls, model_name, bases, attrs, **kwargs)
         if do_app_label_workaround:
             del meta.app_label
         return new_class
 
     @classmethod
-    def validate_model_fields(self, new_class):
+    def validate_model_fields(cls, new_class):
         "check if all fields names are allowed (i.e. not in POLYMORPHIC_SPECIAL_Q_KWORDS)"
         for f in new_class._meta.fields:
             if f.name in POLYMORPHIC_SPECIAL_Q_KWORDS:
@@ -125,7 +125,7 @@ class PolymorphicModelBase(ModelBase):
                 raise AssertionError(e % (new_class.__name__, f.name))
 
     @classmethod
-    def validate_model_manager(self, manager, model_name, manager_name):
+    def validate_model_manager(cls, manager, model_name, manager_name):
         """check if the manager is derived from PolymorphicManager
         and its querysets from PolymorphicQuerySet - throw AssertionError if not"""
 
@@ -146,20 +146,14 @@ class PolymorphicModelBase(ModelBase):
         if not getattr(manager, "queryset_class", None) or not issubclass(
             manager.queryset_class, PolymorphicQuerySet
         ):
-            e = (
-                'PolymorphicModel: "{}.{}" has been instantiated with a queryset class '
-                "which is not a subclass of PolymorphicQuerySet (which is required)".format(
-                    model_name, manager_name
-                )
-            )
+            e = f'PolymorphicModel: "{model_name}.{manager_name}" has been instantiated with a queryset class which is not a subclass of PolymorphicQuerySet (which is required)'
             warnings.warn(e, ManagerInheritanceWarning, stacklevel=3)
         return manager
 
     @property
     def base_objects(self):
         warnings.warn(
-            "Using PolymorphicModel.base_objects is deprecated.\n"
-            "Use {}.objects.non_polymorphic() instead.".format(self.__class__.__name__),
+            f"Using PolymorphicModel.base_objects is deprecated.\nUse {self.__class__.__name__}.objects.non_polymorphic() instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -195,7 +189,7 @@ class PolymorphicModelBase(ModelBase):
         manager = super()._default_manager
         if not isinstance(manager, PolymorphicManager):
             warnings.warn(
-                "{}._default_manager is not a PolymorphicManager".format(self.__class__.__name__),
+                f"{self.__class__.__name__}._default_manager is not a PolymorphicManager",
                 ManagerInheritanceWarning,
             )
 

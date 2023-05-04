@@ -142,7 +142,7 @@ def translate_polymorphic_field_path(queryset_model, field_path):
     classname, sep, pure_field_path = field_path.partition("___")
     if not sep:
         return field_path
-    assert classname, "PolymorphicModel: %s: bad field specification" % field_path
+    assert classname, f"PolymorphicModel: {field_path}: bad field specification"
 
     negated = False
     if classname[0] == "-":
@@ -153,10 +153,9 @@ def translate_polymorphic_field_path(queryset_model, field_path):
         # the user has app label prepended to class name via __ => use Django's get_model function
         appname, sep, classname = classname.partition("__")
         model = apps.get_model(appname, classname)
-        assert model, "PolymorphicModel: model {} (in app {}) not found!".format(
-            model.__name__,
-            appname,
-        )
+        assert (
+            model
+        ), f"PolymorphicModel: model {model.__name__} (in app {appname}) not found!"
         if not issubclass(model, queryset_model):
             e = (
                 'PolymorphicModel: queryset filter error: "'
@@ -186,18 +185,13 @@ def translate_polymorphic_field_path(queryset_model, field_path):
 
         submodels = _get_all_sub_models(queryset_model)
         model = submodels.get(classname, None)
-        assert model, "PolymorphicModel: model {} not found (not a subclass of {})!".format(
-            classname,
-            queryset_model.__name__,
-        )
+        assert (
+            model
+        ), f"PolymorphicModel: model {classname} not found (not a subclass of {queryset_model.__name__})!"
 
     basepath = _create_base_path(queryset_model, model)
 
-    if negated:
-        newpath = "-"
-    else:
-        newpath = ""
-
+    newpath = "-" if negated else ""
     newpath += basepath
     if basepath:
         newpath += "__"
@@ -240,12 +234,11 @@ def _create_base_path(baseclass, myclass):
         if b == baseclass:
             return _get_query_related_name(myclass)
 
-        path = _create_base_path(baseclass, b)
-        if path:
+        if path := _create_base_path(baseclass, b):
             if b._meta.abstract or b._meta.proxy:
                 return _get_query_related_name(myclass)
             else:
-                return path + "__" + _get_query_related_name(myclass)
+                return f"{path}__{_get_query_related_name(myclass)}"
     return ""
 
 
@@ -297,7 +290,6 @@ def _get_mro_content_type_ids(models, using):
     for model in models:
         ct = ContentType.objects.db_manager(using).get_for_model(model, for_concrete_model=False)
         contenttype_ids.add(ct.pk)
-        subclasses = model.__subclasses__()
-        if subclasses:
+        if subclasses := model.__subclasses__():
             contenttype_ids.update(_get_mro_content_type_ids(subclasses, using))
     return contenttype_ids

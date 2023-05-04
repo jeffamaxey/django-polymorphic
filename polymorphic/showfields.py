@@ -26,15 +26,9 @@ class ShowFieldBase:
     def _showfields_get_content(self, field_name, field_type=type(None)):
         "helper for __unicode__"
         content = getattr(self, field_name)
-        if self.polymorphic_showfield_old_format:
-            out = ": "
-        else:
-            out = " "
+        out = ": " if self.polymorphic_showfield_old_format else " "
         if issubclass(field_type, models.ForeignKey):
-            if content is None:
-                out += "None"
-            else:
-                out += content.__class__.__name__
+            out += "None" if content is None else content.__class__.__name__
         elif issubclass(field_type, models.ManyToManyField):
             out += "%d" % content.count()
         elif isinstance(content, int):
@@ -44,8 +38,8 @@ class ShowFieldBase:
         else:
             txt = str(content)
             if len(txt) > self.polymorphic_showfield_max_field_width:
-                txt = txt[: self.polymorphic_showfield_max_field_width - 2] + ".."
-            out += '"' + txt + '"'
+                txt = f"{txt[:self.polymorphic_showfield_max_field_width - 2]}.."
+            out += f'"{txt}"'
         return out
 
     def _showfields_add_regular_fields(self, parts):
@@ -62,12 +56,11 @@ class ShowFieldBase:
 
             # if this is the standard primary key named "id", print it as we did with older versions of django_polymorphic
             if field.primary_key and field.name == "id" and type(field) == models.AutoField:
-                out += " " + str(getattr(self, field.name))
+                out += f" {str(getattr(self, field.name))}"
 
-            # otherwise, display it just like all other fields (with correct type, shortened content etc.)
             else:
                 if self.polymorphic_showfield_type:
-                    out += " (" + type(field).__name__
+                    out += f" ({type(field).__name__}"
                     if field.primary_key:
                         out += "/pk"
                     out += ")"
@@ -79,12 +72,12 @@ class ShowFieldBase:
 
     def _showfields_add_dynamic_fields(self, field_list, title, parts):
         "helper for __unicode__"
-        parts.append((True, "- " + title, ":"))
+        parts.append((True, f"- {title}", ":"))
         for field_name in field_list:
             out = field_name
             content = getattr(self, field_name)
             if self.polymorphic_showfield_type:
-                out += " (" + type(content).__name__ + ")"
+                out += f" ({type(content).__name__})"
             if self.polymorphic_showfield_content:
                 out += self._showfields_get_content(field_name)
 
@@ -111,9 +104,8 @@ class ShowFieldBase:
             )
 
         if self.polymorphic_showfield_deferred:
-            fields = self.get_deferred_fields()
-            if fields:
-                parts.append((False, "deferred[{}]".format(",".join(sorted(fields))), ""))
+            if fields := self.get_deferred_fields():
+                parts.append((False, f'deferred[{",".join(sorted(fields))}]', ""))
 
         # format result
 
@@ -152,7 +144,7 @@ class ShowFieldBase:
             if not new_section:
                 possible_line_break_pos = len(out)
 
-        return "<" + out + ">"
+        return f"<{out}>"
 
 
 class ShowFieldType(ShowFieldBase):

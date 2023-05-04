@@ -33,10 +33,7 @@ class PolymorphicManager(models.Manager):
         return qs
 
     def __str__(self):
-        return "{} (PolymorphicManager) using {}".format(
-            self.__class__.__name__,
-            self.queryset_class.__name__,
-        )
+        return f"{self.__class__.__name__} (PolymorphicManager) using {self.queryset_class.__name__}"
 
     # Proxied methods
     def non_polymorphic(self):

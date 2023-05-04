@@ -14,9 +14,7 @@ warnings.simplefilter("always", DeprecationWarning)
 # Give feedback on used versions
 sys.stderr.write(f"Using Python version {sys.version[:5]} from {sys.executable}\n")
 sys.stderr.write(
-    "Using Django version {} from {}\n".format(
-        django.get_version(), dirname(abspath(django.__file__))
-    )
+    f"Using Django version {django.get_version()} from {dirname(abspath(django.__file__))}\n"
 )
 
 if not settings.configured:

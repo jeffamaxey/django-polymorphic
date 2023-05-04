@@ -43,7 +43,7 @@ class CreditCardPayment(Payment):
     Credit card
     """
 
-    MONTH_CHOICES = [(i, n) for i, n in sorted(MONTHS_3.items())]
+    MONTH_CHOICES = list(sorted(MONTHS_3.items()))
 
     card_type = models.CharField(max_length=10)
     expiry_month = models.PositiveSmallIntegerField(choices=MONTH_CHOICES)
@@ -52,6 +52,7 @@ class CreditCardPayment(Payment):
     class Meta:
         verbose_name = _("Credit Card Payment")
         verbose_name_plural = _("Credit Card Payments")
+
 
 
 class BankPayment(Payment):

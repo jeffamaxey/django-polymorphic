@@ -161,7 +161,7 @@ class PolymorphicTests(TransactionTestCase):
   <BlogA: id 1, name (CharField) "B1", info (CharField) "i1"> ]"""
 
         x = "\n" + repr(BlogBase.objects.order_by("-BlogA___info"))
-        self.assertTrue(x == expected1 or x == expected2)
+        self.assertTrue(x in [expected1, expected2])
 
     def test_limit_choices_to(self):
         """
@@ -202,8 +202,8 @@ class PolymorphicTests(TransactionTestCase):
         c = UUIDPlainC.objects.create(field1="C1", field2="C2", field3="C3")
         qs = UUIDPlainA.objects.all()
         # Test that primary key values are valid UUIDs
-        self.assertEqual(uuid.UUID("urn:uuid:%s" % a.pk, version=1), a.pk)
-        self.assertEqual(uuid.UUID("urn:uuid:%s" % c.pk, version=1), c.pk)
+        self.assertEqual(uuid.UUID(f"urn:uuid:{a.pk}", version=1), a.pk)
+        self.assertEqual(uuid.UUID(f"urn:uuid:{c.pk}", version=1), c.pk)
 
     def create_model2abcd(self):
         """

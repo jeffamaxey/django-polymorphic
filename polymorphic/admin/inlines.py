@@ -60,12 +60,13 @@ class PolymorphicInlineModelAdmin(InlineModelAdmin):
         # Extra check to avoid confusion
         # While we could monkeypatch the admin here, better stay explicit.
         parent_admin = admin_site._registry.get(parent_model, None)
-        if parent_admin is not None:  # Can be None during check
-            if not isinstance(parent_admin, PolymorphicInlineSupportMixin):
-                raise ImproperlyConfigured(
-                    "To use polymorphic inlines, add the `PolymorphicInlineSupportMixin` mixin "
-                    "to the ModelAdmin that hosts the inline."
-                )
+        if parent_admin is not None and not isinstance(
+            parent_admin, PolymorphicInlineSupportMixin
+        ):
+            raise ImproperlyConfigured(
+                "To use polymorphic inlines, add the `PolymorphicInlineSupportMixin` mixin "
+                "to the ModelAdmin that hosts the inline."
+            )
 
         # While the inline is created per request, the 'request' object is not known here.
         # Hence, creating all child inlines unconditionally, without checking permissions.
@@ -80,10 +81,10 @@ class PolymorphicInlineModelAdmin(InlineModelAdmin):
         """
         :rtype List[PolymorphicInlineModelAdmin.Child]
         """
-        instances = []
-        for ChildInlineType in self.child_inlines:
-            instances.append(ChildInlineType(parent_inline=self))
-        return instances
+        return [
+            ChildInlineType(parent_inline=self)
+            for ChildInlineType in self.child_inlines
+        ]
 
     def get_child_inline_instance(self, model):
         """
@@ -120,26 +121,19 @@ class PolymorphicInlineModelAdmin(InlineModelAdmin):
         The formset 'children' provide the details for all child models that are part of this formset.
         It provides a stripped version of the modelform/formset factory methods.
         """
-        formset_children = []
-        for child_inline in self.child_inline_instances:
-            # TODO: the children can be limited here per request based on permissions.
-            formset_children.append(child_inline.get_formset_child(request, obj=obj))
-        return formset_children
+        return [
+            child_inline.get_formset_child(request, obj=obj)
+            for child_inline in self.child_inline_instances
+        ]
 
     def get_fieldsets(self, request, obj=None):
         """
         Hook for specifying fieldsets.
         """
-        if self.fieldsets:
-            return self.fieldsets
-        else:
-            return []  # Avoid exposing fields to the child
+        return self.fieldsets if self.fieldsets else []
 
     def get_fields(self, request, obj=None):
-        if self.fields:
-            return self.fields
-        else:
-            return []  # Avoid exposing fields to the child
+        return self.fields if self.fields else []
 
     @property
     def media(self):
@@ -221,11 +215,7 @@ class PolymorphicInlineModelAdmin(InlineModelAdmin):
             else:
                 fields = flatten_fieldsets(self.get_fieldsets(request, obj))
 
-            if self.exclude is None:
-                exclude = []
-            else:
-                exclude = list(self.exclude)
-
+            exclude = [] if self.exclude is None else list(self.exclude)
             exclude.extend(self.get_readonly_fields(request, obj))
             # Add forcefully, as Django 1.10 doesn't include readonly fields.
             exclude.append("polymorphic_ctype")
@@ -235,15 +225,14 @@ class PolymorphicInlineModelAdmin(InlineModelAdmin):
                 # InlineModelAdmin doesn't define its own.
                 exclude.extend(self.form._meta.exclude)
 
-            # can_delete = self.can_delete and self.has_delete_permission(request, obj)
             defaults = {
                 "form": self.form,
                 "fields": fields,
                 "exclude": exclude or None,
-                "formfield_callback": partial(self.formfield_for_dbfield, request=request),
-            }
-            defaults.update(kwargs)
-
+                "formfield_callback": partial(
+                    self.formfield_for_dbfield, request=request
+                ),
+            } | kwargs
             # This goes through the same logic that get_formset() calls
             # by passing the inline class attributes to modelform_factory()
             FormSetChildClass = self.formset_child
